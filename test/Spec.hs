@@ -28,9 +28,13 @@ test5 = TestCase (assertEqual "DOWN" [0,0,0,0,8,0,0,0,8,0,0,0,64,32,0,2] (move b
 board4 = [4,0,0,0,0,0,0,0,2,0,0,0,4,0,4,0]
 test6 = TestCase (assertEqual "SEI" [0,0,0,0,4,0,0,0,2,0,0,0,4,0,4,0] (move board4 "DOWN"))
 
+board5 = [8,4,32,2,64,32,2,8,32,16,8,0,16,8,2,0]
+test7 = TestCase (assertEqual "Sette" [11,15] (freeIndexes board5))
+
 tests = TestList [ TestLabel "test uno: " test1
                  , TestLabel "test due: " test2
                  , TestLabel "test due: " test3
                  , TestLabel "test due: " test4
                  , TestLabel "test due: " test5
-                 , TestLabel "test due: " test6 ]
+                 , TestLabel "test due: " test6
+                 , TestLabel "test due: " test7 ]

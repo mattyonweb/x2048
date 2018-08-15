@@ -5,6 +5,7 @@ import Data.IORef
 import System.IO
 import System.Random
 import Control.Monad
+import System.Environment (getArgs)
 import X2048
 import AI
  
@@ -12,9 +13,15 @@ main = do
     hSetBuffering stdin NoBuffering
     hSetEcho stdin False
 
-    b <- newIORef (fromString stringExample)   
-    -- mainLoop b True
-    mainLoopAi b
+    b <- newIORef (fromString stringExample)
+    
+    args <- getArgs
+    case args of
+        [] -> mainLoop b True
+        ["ai"] -> do
+                    mainLoopAi b
+                    return ()
+        ["ts"] -> counter b [] 100
 
 mainLoop :: IORef Board -> Bool -> IO ()
 mainLoop board printOrNot = do
@@ -42,20 +49,47 @@ mainLoop board printOrNot = do
             cpuMove board
             mainLoop board True
 
-mainLoopAi :: IORef Board -> IO ()
+mainLoopAi :: IORef Board -> IO Board
 mainLoopAi board = do
-    readIORef board >>= prettyPrint
-    putStrLn "================="
+    -- putStrLn "================="
 
+    -- putStrLn "Board:"
+    -- readIORef board >>= prettyPrint
+    -- putStrLn ""
+
+    
     concreteBoard <- readIORef board
     let chosenDirection = choice concreteBoard 
     writeIORef board (move concreteBoard chosenDirection)
 
     b' <- readIORef board
+
+    -- putStrLn "Board moved in the chosen direction:"
+    
+    -- prettyPrint b'
     
     if   (concreteBoard == b')
-    then return ()
+    then return b'
     else do
-        putStrLn $ "Choosen dir: " ++ chosenDirection
+        -- putStrLn $ "(choosen dir: " ++ chosenDirection ++ ")\n"
         cpuMove board
         mainLoopAi board
+
+count :: Eq a => [a] -> a -> Int
+count [] n = 0
+count (x:xs) n = if (x==n) then 1 + count xs n else count xs n
+ 
+counter board maximums iterations = do
+    if (length maximums < iterations)
+    then do
+        endBoard <- mainLoopAi board
+        prettyPrint endBoard
+        putStrLn $ show $ maximum endBoard
+        writeIORef board (fromString stringExample)
+        counter board (maximum endBoard : maximums) iterations
+    else do
+        putStrLn $ "128: " ++ (show $ count maximums 128)
+        putStrLn $ "256: " ++ (show $ count maximums 256)
+        putStrLn $ "512: " ++ (show $ count maximums 512)
+        putStrLn $ "1024: " ++ (show $ count maximums 1024)
+        putStrLn $ "2048: " ++ (show $ count maximums 2048)

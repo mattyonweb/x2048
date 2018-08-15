@@ -4,9 +4,11 @@ module X2048
 , fromString
 , stringExample
 , prettyPrint
+, boardApply
 , move
 , cpuMove
-, freeIndexes)
+, freeIndexes
+, generateRotations)
 where 
 
 import Data.List
@@ -19,20 +21,8 @@ type Board      = [Int]
 type Direction  = String
 
 stringExample :: String
--- stringExample = "....2.......4..."
-stringExample = "...42224.228..28"
-
--- initialBoard :: IO Board
--- initialBoard = do
-    -- i1 <- randomRIO (0, 15)
-    -- v1 <- randomRIO (1, 2)
-    -- i2 <- randomRIO (0, 15)
-    -- v2 <- randomRIO (1, 2)
-
-    -- let board = replicate 16 0
-    -- return ()
-    
-    
+stringExample = "....2.......4..."
+-- stringExample = "...42224.228..28"    
 
 -- | Converts a 16-chars string of {.248} into a Board 
 fromString :: String -> Board
@@ -59,18 +49,25 @@ makeMove matrix   = map (fillWithZeros . groupEquals) removed
     where removed = map (filter (/=0)) matrix
 
 -- | Matrix rotations functions
+mirror = map reverse
 rotl   = transpose . map reverse
 rotr   = map reverse . transpose
 
+boardApply :: ([Board] -> [Board]) -> Board -> Direction -> Board
+boardApply f board dir
+    | dir == "LEFT"  = concat $ f matrix
+    | dir == "RIGHT" = concat $ mirror $ f (mirror matrix)
+    | dir == "UP"    = concat $ rotr $ f (rotl matrix)
+    | dir == "DOWN"  = concat $ rotl $ f (rotr matrix)
+        where matrix = chunks 4 board
+
 -- | Moves the matrix in the selected direction 
 move :: Board -> Direction -> Board
-move board dir
-    | dir == "LEFT"  = concat $ makeMove matrix
-    | dir == "RIGHT" = concat $ mirror $ makeMove $ mirror matrix
-    | dir == "UP"    = concat $ rotr $ makeMove $ rotl matrix
-    | dir == "DOWN"  = concat $ rotl $ makeMove $ rotr matrix
-        where mirror = map reverse
-              matrix = chunks 4 board
+move board dir = boardApply makeMove board dir
+
+generateRotations :: Board -> [ [Board] ]
+generateRotations b = [board, mirror board, rotl board, rotr board]
+    where board = chunks 4 b
 
 -- | Pretty print of Board
 prettyPrint :: Board -> IO ()
@@ -94,12 +91,12 @@ cpuMove iorefBoard = do
     newCell <- randomRIO (1, 10) :: IO Int
     let newCell' = if (newCell == 1) then 4 else 2
     
-    putStrLn "index frees:"
-    print frees
-    putStrLn "chosen index"
-    print $ frees !! idx
-    putStrLn "new val"
-    print newCell'
+    -- putStrLn "index frees:"
+    -- print frees
+    -- putStrLn "chosen index"
+    -- print $ frees !! idx
+    -- putStrLn "new val"
+    -- print newCell'
 
     writeIORef iorefBoard (take (frees !! idx) concreteBoard ++ [newCell'] ++ drop ((frees !! idx)+1) concreteBoard)
 
