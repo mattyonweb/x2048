@@ -24,6 +24,8 @@ evaluate board = fromIntegral (emptyBlocks * (monotonicity board)) * (variance b
     where emptyBlocks = length $ freeIndexes board
 
 -- | Generates the 4 translation of a board.
+-- In other words, this function returns the four boards the user can get by moving up, down, left or right.
+-- In case the movement in one of such directions is impossible (e.g. no tile can be moved to the left), an empty list will be returned.
 boardTranslations :: Board -> [Board]
 boardTranslations board = map (\b -> if b == board then [] else b) boards  -- Evita di rimanere fermo
     where boards = map (move board) ["UP", "DOWN", "LEFT", "RIGHT"]
@@ -39,28 +41,33 @@ convertToDir idx = case idx of
 
 -- | Given a board, return the best direction where to move the board according
 -- to the AI.
--- choice :: Board -> Direction
--- choice board = convertToDir indexOfBest
-    -- where possibilities = map everyPossibleCpuMove $ boardTranslations board
-          -- evaluatedDirs = map (sum . map evaluate) possibilities
-          -- firstLevelEval b = evaluate b 
-          -- evaluatedDirs = map (\board -> evaluate board + ( (sum $ map evaluate (everyPossibleCpuMove board)) / (fromIntegral $ length possibilities))) (boardTranslations board)
-          -- indexOfBest   = fromJust $ elemIndex (maximum evaluatedDirs) evaluatedDirs
 choice :: Board -> Direction
 choice board = convertToDir indexOfBest
-    where usrChoices    = boardTranslations board --dmkUserMoveTree 2 board :: UserMoveTree
-          trees         = map (mkCpuMoveTree 2) usrChoices
-          evaluatedDirs = map cpuTreeEval trees
+    where usrChoices    = boardTranslations board :: [Board]
+          trees         = map (mkCpuMoveTree 2) usrChoices :: [CpuMoveTree]
+          evaluatedDirs = map cpuTreeEval trees :: [Float]
           indexOfBest   = fromJust $ elemIndex (maximum evaluatedDirs) evaluatedDirs
 
 
--- f l = map (\board -> evaluate board + (`quot` (map (sum . map evaluate board) possibilities) (length possibilites))) boardTranslations board
 -- | Gives a rate of monotonicity.
+-- A monotonic row (or column) is made of tiles in order. For example:
+-- [2,4,8,16] is a perfectly fine monotonic row;
+-- [16,8,4,2] is also monotonic;
+-- [4,256,2,0] is not monotonic;
+-- [2,2,2,2] is monotonic.
+-- The more monotonic a board, the better.
 monotonicity :: Board -> Int
 monotonicity board = maximum $ map monotony boards
     where boards = generateRotations board
           monotony m = sum $ map (\row -> if (row == (sort row)) then 1 else 0) m 
 
+-- | Calculates the variance of a board.
+-- Variances gives the idea of how much tiles of the same row/columns differs from one another. For example:
+-- [2,2,2,2] will have the lowest variance
+-- [2,4,8,16] will have a greater, but still low variance
+-- [1024,1024,1024,1024] will have the lowest variance, again
+-- [256,2,4,2] will have a big variance
+-- The smaller a variance value, the better.
 variance :: Board -> Float
 variance board = (fromIntegral 4) / (fromIntegral (1 + var))
     where avg = sum board `quot` 16
