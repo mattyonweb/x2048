@@ -21,7 +21,7 @@ type Board      = [Int]
 type Direction  = String
 
 stringExample :: String
-stringExample = "....2.......4..."
+stringExample = "....2.......2..."
 -- stringExample = "...42224.228..28"    
 
 -- | Converts a 16-chars string of {.248} into a Board 
@@ -90,13 +90,6 @@ cpuMove iorefBoard = do
 
     newCell <- randomRIO (1, 10) :: IO Int
     let newCell' = if (newCell == 1) then 4 else 2
-    
-    -- putStrLn "index frees:"
-    -- print frees
-    -- putStrLn "chosen index"
-    -- print $ frees !! idx
-    -- putStrLn "new val"
-    -- print newCell'
 
     writeIORef iorefBoard (take (frees !! idx) concreteBoard ++ [newCell'] ++ drop ((frees !! idx)+1) concreteBoard)
 

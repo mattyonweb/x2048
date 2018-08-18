@@ -50,28 +50,17 @@ mainLoop board printOrNot = do
             mainLoop board True
 
 mainLoopAi :: IORef Board -> IO Board
-mainLoopAi board = do
-    -- putStrLn "================="
-
-    -- putStrLn "Board:"
-    -- readIORef board >>= prettyPrint
-    -- putStrLn ""
-
-    
+mainLoopAi board = do    
     concreteBoard <- readIORef board
+    
     let chosenDirection = choice concreteBoard 
     writeIORef board (move concreteBoard chosenDirection)
 
     b' <- readIORef board
 
-    -- putStrLn "Board moved in the chosen direction:"
-    
-    -- prettyPrint b'
-    
     if   (concreteBoard == b')
     then return b'
     else do
-        -- putStrLn $ "(choosen dir: " ++ chosenDirection ++ ")\n"
         cpuMove board
         mainLoopAi board
 
