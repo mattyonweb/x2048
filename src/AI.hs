@@ -1,9 +1,8 @@
 module AI where
 
 import X2048
-import Data.Maybe
-import Data.List
-import Data.Foldable
+import Data.Maybe (fromJust)
+import Data.List (elemIndex, sort)
 
 -- | Generate every possible CPU moves that could follow the current board.
 everyPossibleCpuMove :: Board -> [Board]

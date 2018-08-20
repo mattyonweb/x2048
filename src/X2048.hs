@@ -2,7 +2,6 @@ module X2048
 ( Board
 , Direction
 , prettyPrint
-, boardApply
 , move
 , cpuMove
 , freeIndexes
@@ -10,28 +9,22 @@ module X2048
 , replace
 , initialBoard
 , addNewTile )
-where 
+where
 
-import Data.List
-import Data.List.Split (chunksOf)
 import Data.IORef
-import System.IO
-import System.Random
-import Control.Monad
+import Data.List (intercalate, transpose)
+import Data.List.Split (chunksOf)
+import System.Random (randomRIO)
 
 type Board      = [Int]
 type Direction  = String
 
 initialBoard :: IO Board
 initialBoard = do
-    let board' = replicate 16 0
-    board <- addNewTile board'
+    board <- return $ replicate 16 0
+    board <- addNewTile board
     board <- addNewTile board
     return board
-
--- | Splits a list into chunksOf of length n
--- chunksOf :: Int -> [a] -> [[a]]
--- chunksOf n = takeWhile (not.null) . unfoldr (Just . splitAt n)
 
 -- | Replaces element at IDX with newCell.
 replace :: Int -> a -> [a] -> [a]
@@ -45,30 +38,24 @@ groupEquals (xa:xb:xs)
     | xa == xb  = (xa+xa) : groupEquals xs
     | otherwise = xa : groupEquals (xb : xs)
 
-fillWithZeros :: [Int] -> [Int]
-fillWithZeros l = l ++ replicate (4 - length l) 0
-
 -- | Moves the board to the left, merges cells and then returns the new matrix
-makeMove :: [Board] -> [Board]
-makeMove matrix   = map (fillWithZeros . groupEquals) removed
+mergeLeft :: [Board] -> [Board]
+mergeLeft matrix   = map (fillWithZeros . groupEquals) removed
     where removed = map (filter (/=0)) matrix
+          fillWithZeros l = l ++ replicate (4 - length l) 0 
 
 -- | Matrix rotations functions
 mirror = map reverse
 rotl   = transpose . map reverse
 rotr   = map reverse . transpose
 
-boardApply :: ([Board] -> [Board]) -> Board -> Direction -> Board
-boardApply f board dir
-    | dir == "LEFT"  = concat $ f matrix
-    | dir == "RIGHT" = concat $ mirror $ f (mirror matrix)
-    | dir == "UP"    = concat $ rotr $ f (rotl matrix)
-    | dir == "DOWN"  = concat $ rotl $ f (rotr matrix)
-        where matrix = chunksOf 4 board
-
--- | Moves the matrix in the selected direction 
 move :: Board -> Direction -> Board
-move board dir = boardApply makeMove board dir
+move board dir
+    | dir == "LEFT"  = concat $ mergeLeft matrix
+    | dir == "RIGHT" = concat $ mirror $ mergeLeft (mirror matrix)
+    | dir == "UP"    = concat $ rotr $ mergeLeft (rotl matrix)
+    | dir == "DOWN"  = concat $ rotl $ mergeLeft (rotr matrix)
+        where matrix = chunksOf 4 board
 
 generateRotations :: Board -> [ [Board] ]
 generateRotations b = [board, mirror board, rotl board, rotr board]
@@ -100,6 +87,6 @@ addNewTile board = do
     idx <- randomRIO (0, (length frees)-1) :: IO Int
 
     newCell <- randomRIO (1, 10) :: IO Int
-    let newCell' = if (newCell == 1) then 4 else 2
+    newCell <- return $ if (newCell == 1) then 4 else 2
 
-    return $ replace (frees !! idx) newCell' board
+    return $ replace (frees !! idx) newCell board
