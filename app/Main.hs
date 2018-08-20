@@ -1,5 +1,3 @@
- {-# LANGUAGE OverloadedStrings #-}
-
 import Data.List
 import Data.IORef
 import System.IO
@@ -13,7 +11,8 @@ main = do
     hSetBuffering stdin NoBuffering
     hSetEcho stdin False
 
-    b <- newIORef (fromString stringExample)
+    board <- initialBoard
+    b <- newIORef board
     
     args <- getArgs
     case args of
@@ -21,7 +20,13 @@ main = do
         ["ai"] -> do
                     mainLoopAi b
                     return ()
-        ["ts"] -> counter b [] 100
+        ["ts"] -> do
+                    hSetEcho stdin True
+                    putStrLn "How many tests?"
+                    numStr <- getLine
+                    let numTests = read numStr :: Int
+                    hSetEcho stdin False
+                    counter b [] numTests
 
 mainLoop :: IORef Board -> Bool -> IO ()
 mainLoop board printOrNot = do
@@ -74,7 +79,8 @@ counter board maximums iterations = do
         endBoard <- mainLoopAi board
         prettyPrint endBoard
         putStrLn $ show $ maximum endBoard
-        writeIORef board (fromString stringExample)
+        newConcreteBoard <- initialBoard
+        writeIORef board newConcreteBoard
         counter board (maximum endBoard : maximums) iterations
     else do
         putStrLn $ "128: " ++ (show $ count maximums 128)

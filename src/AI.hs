@@ -5,12 +5,6 @@ import Data.Maybe
 import Data.List
 import Data.Foldable
 
-m = fromString stringExample
-
--- | Replaces element at IDX with newCell.
-replace :: Int -> a -> [a] -> [a]
-replace idx newCell list = take idx list ++ [newCell] ++ drop (idx+1) list
-
 -- | Generate every possible CPU moves that could follow the current board.
 everyPossibleCpuMove :: Board -> [Board]
 everyPossibleCpuMove b = withTwos ++ withFours
@@ -18,12 +12,8 @@ everyPossibleCpuMove b = withTwos ++ withFours
           withTwos  = [b] >>= (\x -> [replace i 2 x | i <- frees])
           withFours = [b] >>= (\x -> [replace i 4 x | i <- frees])
 
--- | Evaluates a board.
-evaluate :: Board -> Float
-evaluate board = fromIntegral (emptyBlocks * (monotonicity board)) * (variance board)
-    where emptyBlocks = length $ freeIndexes board
-
 -- | Generates the 4 translation of a board.
+--
 -- In other words, this function returns the four boards the user can get by moving up, down, left or right.
 -- In case the movement in one of such directions is impossible (e.g. no tile can be moved to the left), an empty list will be returned.
 boardTranslations :: Board -> [Board]
@@ -48,6 +38,10 @@ choice board = convertToDir indexOfBest
           evaluatedDirs = map cpuTreeEval trees :: [Float]
           indexOfBest   = fromJust $ elemIndex (maximum evaluatedDirs) evaluatedDirs
 
+-- | Evaluates a board.
+evaluate :: Board -> Float
+evaluate board = fromIntegral (emptyBlocks * (monotonicity board)) * (variance board)
+    where emptyBlocks = quot (length $ freeIndexes board) 2
 
 -- | Gives a rate of monotonicity.
 -- A monotonic row (or column) is made of tiles in order. For example:
@@ -70,9 +64,8 @@ monotonicity board = maximum $ map monotony boards
 -- The smaller a variance value, the better.
 variance :: Board -> Float
 variance board = (fromIntegral 4) / (fromIntegral (1 + var))
-    where avg = sum board `quot` 16
+    where avg = sum board `quot` (length board)
           var = sum $ map (\c -> abs (avg - c)) board
-
 
 
 data UserMoveTree = UserMoveTree Board [CpuMoveTree]
@@ -92,8 +85,10 @@ mkUserMoveTree n b = UserMoveTree b $ map (mkCpuMoveTree (n-1)) (everyPossibleCp
 userTreeEval :: UserMoveTree -> Float
 userTreeEval (UserMoveLeaf b)   = evaluate b 
 userTreeEval (UserMoveTree b l) = evaluate b + ((sum $ map cpuTreeEval l) / (fromIntegral $ (1 + length l)))
+-- userTreeEval (UserMoveTree b l) = evaluate b + (median $ map cpuTreeEval l)
 
 cpuTreeEval :: CpuMoveTree -> Float
 cpuTreeEval (CpuMoveLeaf b)   = evaluate b 
 cpuTreeEval (CpuMoveTree b l) = evaluate b + ((sum $ map userTreeEval l) / (fromIntegral $ (1 + length l)))
+-- cpuTreeEval (CpuMoveTree b l) = evaluate b + (median $ map userTreeEval l)
 

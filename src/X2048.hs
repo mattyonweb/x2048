@@ -1,17 +1,19 @@
 module X2048
 ( Board
 , Direction
-, fromString
-, stringExample
 , prettyPrint
 , boardApply
 , move
 , cpuMove
 , freeIndexes
-, generateRotations)
+, generateRotations
+, replace
+, initialBoard
+, addNewTile )
 where 
 
 import Data.List
+import Data.List.Split (chunksOf)
 import Data.IORef
 import System.IO
 import System.Random
@@ -20,19 +22,22 @@ import Control.Monad
 type Board      = [Int]
 type Direction  = String
 
-stringExample :: String
-stringExample = "....2.......2..."
--- stringExample = "...42224.228..28"    
+initialBoard :: IO Board
+initialBoard = do
+    let board' = replicate 16 0
+    board <- addNewTile board'
+    board <- addNewTile board
+    return board
 
--- | Converts a 16-chars string of {.248} into a Board 
-fromString :: String -> Board
-fromString = map (\c -> if (c=='.') then 0 else (read [c] :: Int))
+-- | Splits a list into chunksOf of length n
+-- chunksOf :: Int -> [a] -> [[a]]
+-- chunksOf n = takeWhile (not.null) . unfoldr (Just . splitAt n)
 
--- | Splits a list into chunks of length n
-chunks :: Int -> [a] -> [[a]]
-chunks n = takeWhile (not.null) . unfoldr (Just . splitAt n)
+-- | Replaces element at IDX with newCell.
+replace :: Int -> a -> [a] -> [a]
+replace idx newCell list = take idx list ++ [newCell] ++ drop (idx+1) list
 
--- | Merges two cell of a row/column if they are equal whenever possible
+-- | Merges two cell of a row/column if they are equal whenever possible.
 groupEquals :: [Int] -> [Int]
 groupEquals [] = []
 groupEquals [x] = [x]
@@ -59,7 +64,7 @@ boardApply f board dir
     | dir == "RIGHT" = concat $ mirror $ f (mirror matrix)
     | dir == "UP"    = concat $ rotr $ f (rotl matrix)
     | dir == "DOWN"  = concat $ rotl $ f (rotr matrix)
-        where matrix = chunks 4 board
+        where matrix = chunksOf 4 board
 
 -- | Moves the matrix in the selected direction 
 move :: Board -> Direction -> Board
@@ -67,11 +72,11 @@ move board dir = boardApply makeMove board dir
 
 generateRotations :: Board -> [ [Board] ]
 generateRotations b = [board, mirror board, rotl board, rotr board]
-    where board = chunks 4 b
+    where board = chunksOf 4 b
 
 -- | Pretty print of Board
 prettyPrint :: Board -> IO ()
-prettyPrint b = putStrLn $ intercalate "\n" $ map (intercalate "\t") (chunks 4 boardStr)
+prettyPrint b = putStrLn $ intercalate "\n" $ map (intercalate "\t") (chunksOf 4 boardStr)
     where boardStr = map show b
 
 -- | Returns the indexes of the empty cells.
@@ -80,17 +85,21 @@ freeIndexes board = map snd freeTuples
     where indexes = zipWith (\x i->(x,i)) board [0..]
           freeTuples = filter (\(x,i)-> x==0) indexes
 
--- | Place a new cell, randomly chosen from 2 or 4
+-- | Place a new tile and update the IORef containing the board.
 cpuMove :: IORef Board -> IO ()
 cpuMove iorefBoard = do
-    concreteBoard <- (readIORef iorefBoard)
+    concreteBoard    <- (readIORef iorefBoard)
+    newConcreteBoard <- addNewTile concreteBoard
+    writeIORef iorefBoard newConcreteBoard
 
-    let frees = freeIndexes concreteBoard
+-- | Given a Board, find an empty tile and fill it with 2 or 4.
+addNewTile :: Board -> IO Board
+addNewTile board = do
+    let frees = freeIndexes board
+
     idx <- randomRIO (0, (length frees)-1) :: IO Int
 
     newCell <- randomRIO (1, 10) :: IO Int
     let newCell' = if (newCell == 1) then 4 else 2
 
-    writeIORef iorefBoard (take (frees !! idx) concreteBoard ++ [newCell'] ++ drop ((frees !! idx)+1) concreteBoard)
-
-    return ()
+    return $ replace (frees !! idx) newCell' board
