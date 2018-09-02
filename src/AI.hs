@@ -38,9 +38,16 @@ choice board = convertToDir indexOfBest
           indexOfBest   = fromJust $ elemIndex (maximum evaluatedDirs) evaluatedDirs
 
 -- | Evaluates a board.
+-- evaluate :: Board -> Float
+-- evaluate board = fromIntegral (emptyBlocks * (monotonicity board)) * (variance board)
+    -- where emptyBlocks = quot (length $ freeIndexes board) 2
 evaluate :: Board -> Float
-evaluate board = fromIntegral (emptyBlocks * (monotonicity board)) * (variance board)
-    where emptyBlocks = quot (length $ freeIndexes board) 2
+evaluate board = fromIntegral (emptyBlocks * (edges board) * (monotonicity board)) * (variance board)
+    where emptyBlocks = length $ freeIndexes board
+
+edges :: Board -> Int
+edges [] = 0
+edges b  = log2 $ maximum [b!!0, b!!3, b!!12, b!!15]
 
 -- | Gives a rate of monotonicity.
 -- A monotonic row (or column) is made of tiles in order. For example:
@@ -61,11 +68,33 @@ monotonicity board = maximum $ map monotony boards
 -- [1024,1024,1024,1024] will have the lowest variance, again
 -- [256,2,4,2] will have a big variance
 -- The smaller a variance value, the better.
+-- variance :: Board -> Float
+-- variance board = (fromIntegral 4) / (fromIntegral (1 + var))
+    -- where avg = sum board `quot` (length board)
+          -- var = sum $ map (\c -> abs (avg - c)) board
 variance :: Board -> Float
-variance board = (fromIntegral 4) / (fromIntegral (1 + var))
-    where avg = sum board `quot` (length board)
-          var = sum $ map (\c -> abs (avg - c)) board
+variance [] = 99
+variance board = 2 / (1 + (minimum $ map varMatrix boards))
+    where boards = generateRotations board
+          avg l = (fromIntegral $ sum l) / (fromIntegral $ length l)
+          varMatrix m = minimum $ map (\row -> avg $ dif $ map (fromIntegral . log2) row) m
 
+dif [] = []
+dif [x] = []
+dif (x:xa:xs) = abs (x-xa) : dif (xa:xs)
+
+log2 0 = 0
+log2 2 = 1
+log2 4 = 2
+log2 8 = 3
+log2 16 = 4
+log2 32 = 5
+log2 64 = 6
+log2 128 = 7
+log2 256 = 8
+log2 512 = 9
+log2 1024 = 10
+log2 2048 = 11
 
 data UserMoveTree = UserMoveTree Board [CpuMoveTree]
                   | UserMoveLeaf Board deriving (Show)
@@ -83,11 +112,11 @@ mkUserMoveTree n b = UserMoveTree b $ map (mkCpuMoveTree (n-1)) (everyPossibleCp
 
 userTreeEval :: UserMoveTree -> Float
 userTreeEval (UserMoveLeaf b)   = evaluate b 
-userTreeEval (UserMoveTree b l) = evaluate b + ((sum $ map cpuTreeEval l) / (fromIntegral $ (1 + length l)))
+userTreeEval (UserMoveTree b l) = evaluate b + ((/) ((sum $ map cpuTreeEval l) / (fromIntegral $ (1 + length l))) 2)
 -- userTreeEval (UserMoveTree b l) = evaluate b + (median $ map cpuTreeEval l)
 
 cpuTreeEval :: CpuMoveTree -> Float
 cpuTreeEval (CpuMoveLeaf b)   = evaluate b 
-cpuTreeEval (CpuMoveTree b l) = evaluate b + ((sum $ map userTreeEval l) / (fromIntegral $ (1 + length l)))
+cpuTreeEval (CpuMoveTree b l) = evaluate b + ((/) ((sum $ map userTreeEval l) / (fromIntegral $ (1 + length l))) 2)
 -- cpuTreeEval (CpuMoveTree b l) = evaluate b + (median $ map userTreeEval l)
 

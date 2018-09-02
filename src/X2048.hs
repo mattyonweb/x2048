@@ -19,12 +19,10 @@ import System.Random (randomRIO)
 type Board      = [Int]
 type Direction  = String
 
+-- L'hò fatta iò
 initialBoard :: IO Board
-initialBoard = do
-    board <- return $ replicate 16 0
-    board <- addNewTile board
-    board <- addNewTile board
-    return board
+initialBoard = (return blankBoard) >>= addNewTile >>= addNewTile
+    where blankBoard = replicate 16 0
 
 -- | Replaces element at IDX with newCell.
 replace :: Int -> a -> [a] -> [a]
@@ -70,7 +68,7 @@ prettyPrint b = putStrLn $ intercalate "\n" $ map (intercalate "\t") (chunksOf 4
 freeIndexes :: Board -> [Int]
 freeIndexes board = map snd freeTuples
     where indexes = zipWith (\x i->(x,i)) board [0..]
-          freeTuples = filter (\(x,i)-> x==0) indexes
+          freeTuples = filter (\(x,_)-> x==0) indexes
 
 -- | Place a new tile and update the IORef containing the board.
 cpuMove :: IORef Board -> IO ()
