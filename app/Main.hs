@@ -1,12 +1,13 @@
-import Data.List
+-- import Data.List
 import Data.IORef
 import System.IO
-import System.Random
-import Control.Monad
+-- import System.Random
+-- import Control.Monad
 import System.Environment (getArgs)
-import X2048
-import AI
- 
+import X2048 (Board, move, cpuMove, prettyPrint, initialBoard)
+import qualified AI (choice)
+
+main :: IO ()
 main = do
     hSetBuffering stdin NoBuffering
     hSetEcho stdin False
@@ -18,15 +19,19 @@ main = do
     case args of
         [] -> mainLoop b True
         ["ai"] -> do
-                    mainLoopAi b
-                    return ()
+             _ <- mainLoopAi b
+             return ()
+             
         ["ts"] -> do
-                    hSetEcho stdin True
-                    putStrLn "How many tests?"
-                    numStr <- getLine
-                    let numTests = read numStr :: Int
-                    hSetEcho stdin False
-                    counter b [] numTests
+             hSetEcho stdin True
+             putStrLn "How many games?"
+             numTests <- (read <$> getLine) :: IO Int
+             hSetEcho stdin False
+             counter b [] numTests
+             
+        other -> do
+             putStrLn "One or more command line commands not recognized. Aborting"
+             return ()
 
 mainLoop :: IORef Board -> Bool -> IO ()
 mainLoop board printOrNot = do
@@ -58,7 +63,7 @@ mainLoopAi :: IORef Board -> IO Board
 mainLoopAi board = do    
     concreteBoard <- readIORef board
     
-    let chosenDirection = choice concreteBoard 
+    let chosenDirection = AI.choice concreteBoard 
     writeIORef board (move concreteBoard chosenDirection)
 
     b' <- readIORef board
@@ -69,10 +74,10 @@ mainLoopAi board = do
         cpuMove board
         mainLoopAi board
 
-count :: Eq a => [a] -> a -> Int
-count [] n = 0
-count (x:xs) n = if (x==n) then 1 + count xs n else count xs n
- 
+count :: Eq a => a -> [a] -> Int
+count x = length . filter (== x)
+
+counter :: IORef Board -> [Int] -> Int -> IO ()
 counter board maximums iterations = do
     if (length maximums < iterations)
     then do
@@ -83,8 +88,8 @@ counter board maximums iterations = do
         writeIORef board newConcreteBoard
         counter board (maximum endBoard : maximums) iterations
     else do
-        putStrLn $ "128: " ++ (show $ count maximums 128)
-        putStrLn $ "256: " ++ (show $ count maximums 256)
-        putStrLn $ "512: " ++ (show $ count maximums 512)
-        putStrLn $ "1024: " ++ (show $ count maximums 1024)
-        putStrLn $ "2048: " ++ (show $ count maximums 2048)
+        putStrLn $ "128: " ++ (show $ count 128 maximums)
+        putStrLn $ "256: " ++ (show $ count 256 maximums)
+        putStrLn $ "512: " ++ (show $ count 512 maximums)
+        putStrLn $ "1024: " ++ (show $ count 1024 maximums)
+        putStrLn $ "2048: " ++ (show $ count 2048 maximums)
