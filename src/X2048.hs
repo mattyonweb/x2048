@@ -1,6 +1,5 @@
 module X2048
 ( Board
-, Direction
 , prettyPrint
 , move
 , cpuMove
@@ -11,13 +10,13 @@ module X2048
 , addNewTile )
 where
 
+import Utils
 import Data.IORef
 import Data.List (intercalate, transpose)
 import Data.List.Split (chunksOf)
 import System.Random (randomRIO)
 
 type Board      = [Int]
-type Direction  = String
 
 -- L'hò fatta iò
 initialBoard :: IO Board
@@ -48,12 +47,12 @@ rotl   = transpose . map reverse
 rotr   = map reverse . transpose
 
 move :: Board -> Direction -> Board
-move board dir
-    | dir == "LEFT"  = concat $ mergeLeft matrix
-    | dir == "RIGHT" = concat $ mirror $ mergeLeft (mirror matrix)
-    | dir == "UP"    = concat $ rotr $ mergeLeft (rotl matrix)
-    | dir == "DOWN"  = concat $ rotl $ mergeLeft (rotr matrix)
-        where matrix = chunksOf 4 board
+move board dir = case dir of
+    Utils.Left  -> concat $ mergeLeft matrix
+    Utils.Right -> concat $ mirror $ mergeLeft (mirror matrix)
+    Up    -> concat $ rotr $ mergeLeft (rotl matrix)
+    Down  -> concat $ rotl $ mergeLeft (rotr matrix)
+  where matrix = chunksOf 4 board
 
 generateRotations :: Board -> [ [Board] ]
 generateRotations b = [board, mirror board, rotl board, rotr board]
@@ -70,12 +69,9 @@ freeIndexes board = map snd freeTuples
     where indexes = zipWith (\x i->(x,i)) board [0..]
           freeTuples = filter (\(x,_)-> x==0) indexes
 
--- | Place a new tile and update the IORef containing the board.
+-- | Place a new tile.
 cpuMove :: Board -> IO Board
-cpuMove board = return board >>= addNewTile 
---     concreteBoard    <- (readIORef iorefBoard)
---     newConcreteBoard <- addNewTile concreteBoard
---     writeIORef iorefBoard newConcreteBoard
+cpuMove board = return board >>= addNewTile
 
 -- | Given a Board, find an empty tile and fill it with 2 or 4.
 addNewTile :: Board -> IO Board

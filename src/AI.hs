@@ -1,6 +1,7 @@
 module AI where
 
 import X2048
+import Utils
 import Data.Maybe (fromJust)
 import Data.List (elemIndex, sort)
 
@@ -17,16 +18,16 @@ everyPossibleCpuMove b = withTwos ++ withFours
 -- In case the movement in one of such directions is impossible (e.g. no tile can be moved to the left), an empty list will be returned.
 boardTranslations :: Board -> [Board]
 boardTranslations board = map (\b -> if b == board then [] else b) boards  -- Evita di rimanere fermo
-    where boards = map (move board) ["UP", "DOWN", "LEFT", "RIGHT"]
+    where boards = map (move board) [Up, Down, Utils.Left, Utils.Right] -- ["UP", "DOWN", "LEFT", "RIGHT"]
 
 -- | __(ugly)__ Converts from idx to direction. Strictly related to the
 -- function boardTranslations.
 convertToDir :: Int -> Direction
-convertToDir idx = case idx of
-                    0 -> "UP"
-                    1 -> "DOWN"
-                    2 -> "LEFT"
-                    3 -> "RIGHT"
+convertToDir 0 = Up
+convertToDir 1 = Down
+convertToDir 2 = Utils.Left
+convertToDir 3 = Utils.Right
+convertToDir _ = NoDir
 
 -- | Given a board, return the best direction where to move the board according
 -- to the AI.

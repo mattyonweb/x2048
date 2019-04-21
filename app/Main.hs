@@ -1,3 +1,4 @@
+import Utils 
 import System.IO
 import System.Environment (getArgs)
 import X2048 (Board, move, cpuMove, prettyPrint, initialBoard)
@@ -28,13 +29,26 @@ main = do
              putStrLn "One or more command line commands not recognized. Aborting"
              return ()
 
+
 -- | Translates numeric pad input to directions (to improve significantly)
-keystrokes :: Char -> String
-keystrokes c = case c of
-  '8' -> "UP"
-  '6' -> "RIGHT"
-  '4' -> "LEFT"
-  '2' -> "DOWN"
+keystrokes :: Char -> IO Direction
+keystrokes c = return dir
+  where dir = case c of
+                '8' -> Up
+                '6' -> Utils.Right
+                '4' -> Utils.Left
+                '2' -> Down
+                _   -> NoDir
+
+
+-- | Asks the user for a direction until it gets a correct one.
+getInputDirection :: IO Direction
+getInputDirection = do
+  c <- getChar >>= keystrokes
+  case c of
+    NoDir -> getInputDirection
+    otherDir -> return otherDir 
+
 
 -- | Loop for a turn in a game with a human (human move and cpu move)
 mainLoopHumanGame :: Bool -> Board -> IO ()
@@ -45,14 +59,13 @@ mainLoopHumanGame doPrint board = do
             putStrLn "================="
         else return ()
 
-    
-    c <- getChar
-
-    let nextBoard = move board (keystrokes c)
+    dir <- getInputDirection
+    let nextBoard = move board dir
     
     if   (board == nextBoard)
-    then mainLoopHumanGame False nextBoard -- Stampa e esci
+    then mainLoopHumanGame False nextBoard
     else (cpuMove nextBoard) >>= (mainLoopHumanGame True)
+
 
 -- | Loop for a turn in a game with CPU only (move decision of the CPU and
 -- the CPU answer)
@@ -65,9 +78,11 @@ mainLoopAiGame board = do
     then return newBoard
     else cpuMove newBoard >>= mainLoopAiGame
 
+
 -- | TODO: remove
 count :: Eq a => a -> [a] -> Int
 count x = length . filter (== x)
+
 
 -- | Run multiple AI games.
 runMultipleGames :: Board -> [Int] -> Int -> IO ()
