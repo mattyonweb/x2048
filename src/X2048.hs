@@ -71,11 +71,11 @@ freeIndexes board = map snd freeTuples
           freeTuples = filter (\(x,_)-> x==0) indexes
 
 -- | Place a new tile and update the IORef containing the board.
-cpuMove :: IORef Board -> IO ()
-cpuMove iorefBoard = do
-    concreteBoard    <- (readIORef iorefBoard)
-    newConcreteBoard <- addNewTile concreteBoard
-    writeIORef iorefBoard newConcreteBoard
+cpuMove :: Board -> IO Board
+cpuMove board = return board >>= addNewTile 
+--     concreteBoard    <- (readIORef iorefBoard)
+--     newConcreteBoard <- addNewTile concreteBoard
+--     writeIORef iorefBoard newConcreteBoard
 
 -- | Given a Board, find an empty tile and fill it with 2 or 4.
 addNewTile :: Board -> IO Board

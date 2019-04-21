@@ -1,8 +1,4 @@
--- import Data.List
-import Data.IORef
 import System.IO
--- import System.Random
--- import Control.Monad
 import System.Environment (getArgs)
 import X2048 (Board, move, cpuMove, prettyPrint, initialBoard)
 import qualified AI (choice)
@@ -10,16 +6,15 @@ import qualified AI (choice)
 main :: IO ()
 main = do
     hSetBuffering stdin NoBuffering
-    hSetEcho stdin False
+    hSetEcho      stdin False
 
     board <- initialBoard
-    b <- newIORef board
-    
-    args <- getArgs
+    args  <- getArgs
     case args of
-        [] -> mainLoop b True
+        [] -> mainLoopHumanGame True board
+        
         ["ai"] -> do
-             _ <- mainLoopAi b
+             _ <- mainLoopAiGame board
              return ()
              
         ["ts"] -> do
@@ -27,66 +22,63 @@ main = do
              putStrLn "How many games?"
              numTests <- (read <$> getLine) :: IO Int
              hSetEcho stdin False
-             counter b [] numTests
+             runMultipleGames board [] numTests
              
-        other -> do
+        _ -> do
              putStrLn "One or more command line commands not recognized. Aborting"
              return ()
 
-mainLoop :: IORef Board -> Bool -> IO ()
-mainLoop board printOrNot = do
-    if printOrNot
+-- | Translates numeric pad input to directions (to improve significantly)
+keystrokes :: Char -> String
+keystrokes c = case c of
+  '8' -> "UP"
+  '6' -> "RIGHT"
+  '4' -> "LEFT"
+  '2' -> "DOWN"
+
+-- | Loop for a turn in a game with a human (human move and cpu move)
+mainLoopHumanGame :: Bool -> Board -> IO ()
+mainLoopHumanGame doPrint board = do
+    if doPrint
         then do
-            readIORef board >>= prettyPrint
+            prettyPrint board
             putStrLn "================="
         else return ()
 
+    
     c <- getChar
+
+    let nextBoard = move board (keystrokes c)
     
-    concreteBoard <- readIORef board
-    case c of
-        '8' -> writeIORef board (move concreteBoard "UP")
-        '6' -> writeIORef board (move concreteBoard "RIGHT")
-        '4' -> writeIORef board (move concreteBoard "LEFT")
-        '2' -> writeIORef board (move concreteBoard "DOWN")
-        _   -> mainLoop board False
+    if   (board == nextBoard)
+    then mainLoopHumanGame False nextBoard -- Stampa e esci
+    else (cpuMove nextBoard) >>= (mainLoopHumanGame True)
 
-    b' <- readIORef board
-    
-    if (concreteBoard == b')
-        then mainLoop board False
-        else do
-            cpuMove board
-            mainLoop board True
+-- | Loop for a turn in a game with CPU only (move decision of the CPU and
+-- the CPU answer)
+mainLoopAiGame :: Board -> IO Board
+mainLoopAiGame board = do    
+    let chosenDirection = AI.choice board 
+    let newBoard = move board chosenDirection
 
-mainLoopAi :: IORef Board -> IO Board
-mainLoopAi board = do    
-    concreteBoard <- readIORef board
-    
-    let chosenDirection = AI.choice concreteBoard 
-    writeIORef board (move concreteBoard chosenDirection)
+    if   (board == newBoard)
+    then return newBoard
+    else cpuMove newBoard >>= mainLoopAiGame
 
-    b' <- readIORef board
-
-    if   (concreteBoard == b')
-    then return b'
-    else do
-        cpuMove board
-        mainLoopAi board
-
+-- | TODO: remove
 count :: Eq a => a -> [a] -> Int
 count x = length . filter (== x)
 
-counter :: IORef Board -> [Int] -> Int -> IO ()
-counter board maximums iterations = do
+-- | Run multiple AI games.
+runMultipleGames :: Board -> [Int] -> Int -> IO ()
+runMultipleGames board maximums iterations = do
     if (length maximums < iterations)
     then do
-        endBoard <- mainLoopAi board
+        endBoard <- mainLoopAiGame board
         prettyPrint endBoard
         putStrLn $ show $ maximum endBoard
-        newConcreteBoard <- initialBoard
-        writeIORef board newConcreteBoard
-        counter board (maximum endBoard : maximums) iterations
+        newBoard <- initialBoard
+        runMultipleGames newBoard (maximum endBoard : maximums) iterations
     else do
         putStrLn $ "128: " ++ (show $ count 128 maximums)
         putStrLn $ "256: " ++ (show $ count 256 maximums)
